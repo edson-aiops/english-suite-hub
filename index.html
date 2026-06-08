@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seu Coach IELTS</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0A0E1A">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', Monaco, Inconsolata, 'Fira Code', 'Courier New', monospace;
+      background: #0A0E1A;
+      color: #E5E7EB;
+      min-height: 100vh;
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
+    header { text-align: center; margin-bottom: 32px; }
+    header h1 { font-size: 1.5rem; color: #00D4AA; letter-spacing: -0.5px; }
+    header p { font-size: 0.85rem; color: #9CA3AF; margin-top: 4px; }
+
+    .grid { display: grid; gap: 16px; max-width: 640px; margin: 0 auto; }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .card:hover { transform: translateY(-2px); border-color: rgba(0,212,170,0.3); }
+    .card.speaking { border-left: 3px solid #00D4AA; }
+    .card.coming-soon { opacity: 0.6; }
+
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-title { font-size: 1.1rem; font-weight: 600; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #374151; }
+    .dot.connected { background: #00D4AA; box-shadow: 0 0 6px rgba(0,212,170,0.5); }
+
+    .band-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    .band-fill { height: 100%; background: #00D4AA; border-radius: 3px; transition: width 0.6s ease; width: 0%; }
+
+    .meta { display: flex; gap: 16px; margin-top: 10px; font-size: 0.8rem; color: #9CA3AF; }
+    .meta span strong { color: #E5E7EB; }
+
+    .btn {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      background: #00D4AA;
+      color: #0A0E1A;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:disabled { background: #374151; color: #9CA3AF; cursor: not-allowed; }
+
+    .focus-box {
+      margin-top: 24px;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(239,68,68,0.15);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .focus-box h3 { font-size: 0.9rem; color: #EF4444; margin-bottom: 10px; }
+    .focus-item { font-size: 0.85rem; color: #D1D5DB; margin-bottom: 8px; }
+    .focus-item em { color: #00D4AA; font-style: normal; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Seu Coach IELTS</h1>
+    <p>Seu progresso. Uma jornada só.</p>
+  </header>
+
+  <main class="grid" id="cards"></main>
+
+  <section id="focusSection" class="focus-box hidden">
+    <h3>🎯 Focar nos erros recorrentes</h3>
+    <div id="focusList"></div>
+  </section>
+
+  <script>
+    const PROGRESS_API = 'https://edsonpo-ielts-progress-api.hf.space';
+
+    function getToken() {
+      let t = localStorage.getItem('student_token');
+      if (!t) {
+        t = (crypto.randomUUID ? crypto.randomUUID()
+             : 'tok-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+        try { localStorage.setItem('student_token', t); } catch(e){}
+      }
+      return t;
+    }
+    const studentToken = getToken();
+
+    const SKILLS = [
+      { key: 'speaking', label: 'Speaking', active: true, url: 'https://edsonpo-speak-agent.hf.space' },
+      { key: 'reading', label: 'Reading', active: false },
+      { key: 'listening', label: 'Listening', active: false },
+      { key: 'writing', label: 'Writing', active: false },
+    ];
+
+    function renderCards(progressMap, connected) {
+      const container = document.getElementById('cards');
+      container.innerHTML = '';
+      SKILLS.forEach(skill => {
+        const p = progressMap[skill.key] || null;
+        const band = p ? (p.best_band || p.last_band || 0) : 0;
+        const bandDisplay = band ? band.toFixed(1) : '—';
+        const barWidth = band ? Math.min((band / 9.0) * 100, 100) + '%' : '0%';
+        const sessions = p ? (p.sessions_count || 0) : 0;
+
+        const card = document.createElement('div');
+        card.className = 'card' + (skill.active ? ' speaking' : ' coming-soon');
+
+        let btnHtml = '';
+        if (skill.active) {
+          const targetUrl = skill.url + '/?student_token=' + encodeURIComponent(studentToken);
+          btnHtml = '<a class="btn" href="' + targetUrl + '" target="_blank" rel="noopener">Praticar</a>';
+        } else {
+          btnHtml = '<button class="btn" disabled>Em breve</button>';
+        }
+
+        const dotClass = (skill.active && connected) ? 'dot connected' : 'dot';
+
+        card.innerHTML =
+          '<div class="card-header">' +
+            '<div class="card-title">' + skill.label + '</div>' +
+            '<div class="' + dotClass + '" title="' + (connected ? 'Conectado' : 'Aguardando') + '"></div>' +
+          '</div>' +
+          '<div class="band-bar"><div class="band-fill" style="width:' + barWidth + '"></div></div>' +
+          '<div class="meta">' +
+            '<span>Best: <strong>' + bandDisplay + '</strong></span>' +
+            '<span>Sessões: <strong>' + (sessions || '—') + '</strong></span>' +
+          '</div>' +
+          btnHtml;
+
+        container.appendChild(card);
+      });
+    }
+
+    function renderFocus(errors) {
+      const section = document.getElementById('focusSection');
+      const list = document.getElementById('focusList');
+      if (!errors || errors.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+      list.innerHTML = '';
+      errors.slice(0, 5).forEach(err => {
+        const div = document.createElement('div');
+        div.className = 'focus-item';
+        div.innerHTML = (err.original ? escapeHtml(err.original) : '') +
+          ' → <em>' + (err.correction ? escapeHtml(err.correction) : '') + '</em>' +
+          (err.count > 1 ? ' <span style="color:#9CA3AF">(' + err.count + 'x)</span>' : '');
+        list.appendChild(div);
+      });
+      section.classList.remove('hidden');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function loadProgress() {
+      try {
+        const r = await fetch(PROGRESS_API + '/progress/' + encodeURIComponent(studentToken), { method: 'GET' });
+        if (!r.ok) { renderCards({}, false); return; }
+        const data = await r.json();
+        const progressMap = {};
+        (data.skill_progress || []).forEach(p => { progressMap[p.skill] = p; });
+        renderCards(progressMap, true);
+        renderFocus(data.top_errors || []);
+      } catch(e) {
+        renderCards({}, false);
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    }
+
+    loadProgress();
+  </script>
+</body>
+</html>
