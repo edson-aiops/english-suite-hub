@@ -92,12 +92,34 @@
     const PROGRESS_API = 'https://edsonpo-ielts-progress-api.hf.space';
 
     function getToken() {
-      let t = localStorage.getItem('student_token');
-      if (!t) {
-        t = (crypto.randomUUID ? crypto.randomUUID()
-             : 'tok-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+      // 1. URL tem prioridade (ponte de identidade entre domínios/aparelhos)
+      let fromUrl = null;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        fromUrl = params.get('student_token');
+      } catch(e) {}
+
+      if (fromUrl && fromUrl.trim()) {
+        const t = fromUrl.trim();
         try { localStorage.setItem('student_token', t); } catch(e){}
+        // Higiene: remover o token da barra de endereço (sem recarregar)
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('student_token');
+          history.replaceState(null, '', url.pathname + url.search + url.hash);
+        } catch(e) {}
+        return t;
       }
+
+      // 2. localStorage
+      let t = null;
+      try { t = localStorage.getItem('student_token'); } catch(e){}
+      if (t) return t;
+
+      // 3. gerar novo
+      t = (crypto.randomUUID ? crypto.randomUUID()
+           : 'tok-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+      try { localStorage.setItem('student_token', t); } catch(e){}
       return t;
     }
     const studentToken = getToken();
