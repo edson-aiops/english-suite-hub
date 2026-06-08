@@ -30,6 +30,7 @@
     }
     .card:hover { transform: translateY(-2px); border-color: rgba(0,212,170,0.3); }
     .card.speaking { border-left: 3px solid #00D4AA; }
+    .card.reading { border-left: 3px solid #00D4AA; }
     .card.coming-soon { opacity: 0.6; }
 
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -126,7 +127,7 @@
 
     const SKILLS = [
       { key: 'speaking', label: 'Speaking', active: true, url: 'https://edsonpo-speak-agent.hf.space' },
-      { key: 'reading', label: 'Reading', active: false },
+      { key: 'reading', label: 'Reading', active: true, url: 'https://edsonpo-reading-agent.hf.space' },
       { key: 'listening', label: 'Listening', active: false },
       { key: 'writing', label: 'Writing', active: false },
     ];
@@ -142,7 +143,7 @@
         const sessions = p ? (p.sessions_count || 0) : 0;
 
         const card = document.createElement('div');
-        card.className = 'card' + (skill.active ? ' speaking' : ' coming-soon');
+        card.className = 'card' + (skill.active ? ' ' + skill.key : ' coming-soon');
 
         let btnHtml = '';
         if (skill.active) {
