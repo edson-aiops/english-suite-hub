@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coach-hub-v4';
+const CACHE_NAME = 'coach-hub-v5';
 const SHELL_ASSETS = [
   './',
   './index.html',
