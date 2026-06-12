@@ -13,6 +13,7 @@
       --primary: #2563eb; --primary-dark: #1d4ed8;
       --success: #16a34a; --warn: #f59e0b; --error: #dc2626;
       --radius: 12px; --radius-sm: 8px;
+      --c-speaking: #7c5cff; --c-reading: #2563eb; --c-listening: #00b3a4; --c-writing: #f0a830;
       --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
       --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
     }
@@ -34,44 +35,51 @@
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
+      padding: 14px 16px;
       box-shadow: var(--shadow-sm);
       transition: transform 0.15s, border-color 0.15s;
     }
     .card:hover { transform: translateY(-2px); border-color: rgba(37,99,235,0.3); }
-    .card.speaking { border-left: 3px solid var(--primary); }
-    .card.reading { border-left: 3px solid var(--primary); }
-    .card.listening { border-left: 3px solid var(--primary); }
-    .card.writing { border-left: 3px solid var(--primary); }
+    .card.speaking { --accent: var(--c-speaking); border-left: 4px solid var(--accent); }
+    .card.reading { --accent: var(--c-reading); border-left: 4px solid var(--accent); }
+    .card.listening { --accent: var(--c-listening); border-left: 4px solid var(--accent); }
+    .card.writing { --accent: var(--c-writing); border-left: 4px solid var(--accent); }
     .card.coming-soon { opacity: 0.6; }
 
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .card-title { font-size: 1.1rem; font-weight: 600; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .card-title { font-size: 1.05rem; font-weight: 600; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; }
     .dot.connected { background: var(--success); box-shadow: 0 0 6px rgba(22,163,74,0.4); }
 
-    .band-bar { height: 6px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden; margin-top: 8px; }
-    .band-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.6s ease; width: 0%; }
+    .band-bar { height: 5px; background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden; margin: 4px 0 8px; }
+    .band-fill { height: 100%; background: var(--accent, var(--primary)); border-radius: 99px; transition: width 0.6s ease; width: 0%; }
 
-    .meta { display: flex; gap: 16px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
+    .meta { display: flex; gap: 16px; margin-top: 2px; font-size: 0.8rem; color: var(--muted); }
     .meta span strong { color: var(--text); }
+    .meta.empty { font-size: 0.8rem; color: var(--muted); }
 
     .btn {
       display: inline-block;
-      margin-top: 14px;
-      padding: 10px 18px;
+      margin-top: 10px;
+      padding: 8px 16px;
       border-radius: var(--radius-sm);
-      background: var(--primary);
+      background: var(--accent, var(--primary));
       color: #ffffff;
       font-weight: 700;
       text-decoration: none;
       font-size: 0.9rem;
       border: none;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: filter 0.15s;
     }
-    .btn:hover { background: var(--primary-dark); }
+    .btn:hover { filter: brightness(1.05); }
     .btn:disabled { background: #f3f4f6; color: #6b7280; cursor: not-allowed; }
+    .btn.ghost {
+      background: transparent;
+      color: var(--accent, var(--primary));
+      border: 1.5px solid var(--accent, var(--primary));
+    }
+    .btn.ghost:hover { filter: none; background: rgba(0,0,0,0.03); }
 
     .focus-box {
       margin-top: 24px;
@@ -153,22 +161,32 @@
       SKILLS.forEach(skill => {
         const p = progressMap[skill.key] || null;
         const band = p ? (p.best_band || p.last_band || 0) : 0;
-        const bandDisplay = band ? band.toFixed(1) : '—';
         const barWidth = band ? Math.min((band / 9.0) * 100, 100) + '%' : '0%';
         const sessions = p ? (p.sessions_count || 0) : 0;
+        const isEmpty = !band && !sessions;
 
         const card = document.createElement('div');
         card.className = 'card' + (skill.active ? ' ' + skill.key : ' coming-soon');
 
-        let btnHtml = '';
-        if (skill.active) {
-          const targetUrl = skill.url + '/?student_token=' + encodeURIComponent(studentToken);
-          btnHtml = '<a class="btn" href="' + targetUrl + '" target="_blank" rel="noopener">Praticar</a>';
-        } else {
-          btnHtml = '<button class="btn" disabled>Em breve</button>';
-        }
-
         const dotClass = (skill.active && connected) ? 'dot connected' : 'dot';
+        const targetUrl = skill.url + '/?student_token=' + encodeURIComponent(studentToken);
+
+        let metaHtml = '';
+        let btnHtml = '';
+        if (!skill.active) {
+          metaHtml = '<div class="meta empty">Em breve</div>';
+          btnHtml = '<button class="btn" disabled>Em breve</button>';
+        } else if (isEmpty) {
+          metaHtml = '<div class="meta empty">Ainda não praticado · comece por aqui</div>';
+          btnHtml = '<a class="btn ghost" href="' + targetUrl + '" target="_blank" rel="noopener">Começar</a>';
+        } else {
+          metaHtml =
+            '<div class="meta">' +
+              '<span>Best: <strong>' + band.toFixed(1) + '</strong></span>' +
+              '<span>Sessões: <strong>' + sessions + '</strong></span>' +
+            '</div>';
+          btnHtml = '<a class="btn" href="' + targetUrl + '" target="_blank" rel="noopener">Praticar</a>';
+        }
 
         card.innerHTML =
           '<div class="card-header">' +
@@ -176,10 +194,7 @@
             '<div class="' + dotClass + '" title="' + (connected ? 'Conectado' : 'Aguardando') + '"></div>' +
           '</div>' +
           '<div class="band-bar"><div class="band-fill" style="width:' + barWidth + '"></div></div>' +
-          '<div class="meta">' +
-            '<span>Best: <strong>' + bandDisplay + '</strong></span>' +
-            '<span>Sessões: <strong>' + (sessions || '—') + '</strong></span>' +
-          '</div>' +
+          metaHtml +
           btnHtml;
 
         container.appendChild(card);
